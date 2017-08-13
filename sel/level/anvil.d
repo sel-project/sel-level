@@ -17,30 +17,30 @@ module sel.level.anvil;
 import std.conv : to;
 import std.typetuple : TypeTuple;
 
-import sel.level.data;
-import sel.level.level : Level;
+import sel.level.data : LevelInfo;
+import sel.level.level : Level, readLevelInfoCompound, writeLevelInfoCompound;
 
 import sel.nbt.file : JavaLevelFormat;
-import sel.nbt.tags;
+import sel.nbt.tags : Named, Byte, Int, Long, String, Compound;
 
-import std.stdio : writeln;
+import std.stdio : writeln; // debug
 
 private alias LevelInfoValues = TypeTuple!(
-	String, "name", "LevelName", "",
-	Long, "seed", "RandomSeed", 0,
-	Int, "gamemode", "GameType", 0,
-	Int, "difficulty", "Difficulty", 1,
-	Byte, "hardcore", "hardcore", 0,
-	Long, "time", "Time", 0,
-	Long, "dayTime", "DayTime", 0,
-	Int, "spawnX", "SpawnX", 0,
-	Int, "spawnY", "SpawnY", 0,
-	Int, "spawnZ", "SpawnZ", 0,
-	Byte, "raining", "raining", 0,
-	Int, "rainTime", "rainTime", 0,
-	Byte, "thundering", "thundering", 0,
-	Int, "thunderTime", "thunderTime", 0,
-	Byte, "commandsAllowed", "allowCommands", 0,
+	String, "name", "LevelName",
+	Long, "seed", "RandomSeed",
+	Int, "gamemode", "GameType",
+	Int, "difficulty", "Difficulty",
+	Byte, "hardcore", "hardcore",
+	Long, "time", "Time",
+	Long, "dayTime", "DayTime",
+	Int, "spawnX", "SpawnX",
+	Int, "spawnY", "SpawnY",
+	Int, "spawnZ", "SpawnZ",
+	Byte, "raining", "raining",
+	Int, "rainTime", "rainTime",
+	Byte, "thundering", "thundering",
+	Int, "thunderTime", "thunderTime",
+	Byte, "commandsAllowed", "allowCommands",
 );
 
 abstract class AbstractAnvil : Level {
@@ -59,14 +59,10 @@ abstract class AbstractAnvil : Level {
 	 * 		ConvException if a conversion error occurs
 	 * Returns: the informations in level.dat, if found
 	 */
-	public override LevelInfo readLevelInfo() {
+	protected override LevelInfo readLevelInfo() {
 		auto compound = this.info_reader.load();
 		if(compound is null || !compound.has!Compound("Data")) return LevelInfo.init; //TODO throw exception
-		compound = cast(Compound)compound["Data"];
-		LevelInfo ret;
-		foreach(i, T; LevelInfoValues) {
-			static if(i % 4 == 0) mixin("ret." ~ LevelInfoValues[i+1]) = to!(typeof(mixin("ret." ~ LevelInfoValues[i+1])))(compound.getValue!T(LevelInfoValues[i+2], LevelInfoValues[i+3]));
-		}
+		LevelInfo ret = readLevelInfoCompound!LevelInfoValues(cast(Compound)compound["Data"]);
 		foreach(gamerule ; compound.getValue!Compound("GameRules", [])) {
 			if(cast(String)gamerule) {
 				immutable value = (cast(String)gamerule).value;
@@ -82,11 +78,8 @@ abstract class AbstractAnvil : Level {
 		return ret;
 	}
 
-	public override void writeLevelInfo(LevelInfo levelInfo) {
-		auto data = new Named!Compound("Data");
-		foreach(i, T; LevelInfoValues) {
-			static if(i % 4 == 0) data[] = new Named!T(LevelInfoValues[i+2], mixin("levelInfo." ~ LevelInfoValues[i+1]));
-		}
+	protected override void writeLevelInfo(LevelInfo levelInfo) {
+		auto data = writeLevelInfoCompound!LevelInfoValues(levelInfo);
 		if(levelInfo.gamerules.length) {
 			auto compound = new Named!Compound("GameRules");
 			foreach(name, gamerule; levelInfo.gamerules) {
@@ -94,7 +87,7 @@ abstract class AbstractAnvil : Level {
 			}
 			data[] = compound;
 		}
-		this.info_reader.tag = new Compound(data);
+		this.info_reader.tag = new Compound(data.rename("Data"));
 		this.info_reader.save();
 	}
 
@@ -120,7 +113,6 @@ unittest {
 		assert(name == "New World");
 		assert(seed == 670593098951997977L);
 		assert(gamemode == 0);
-		assert(difficulty == 1);
 		assert(hardcore == false);
 		assert(time == 75727);
 		assert(dayTime == 85211);

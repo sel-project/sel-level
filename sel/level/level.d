@@ -14,9 +14,12 @@
  */
 module sel.level.level;
 
-import std.path;
+import std.conv : to;
+import std.path : buildNormalizedPath, dirSeparator;
 
 import sel.level.data : LevelInfo;
+
+import sel.nbt.tags : Named, Compound;
 
 abstract class Level {
 
@@ -48,4 +51,23 @@ abstract class Level {
 
 	protected abstract void writeLevelInfo(LevelInfo);
 
+}
+
+LevelInfo readLevelInfoCompound(Info...)(Compound compound) if(Info.length % 3 == 0) {
+	LevelInfo ret;
+	foreach(i, T; Info) {
+		static if(i % 3 == 0) {
+			auto tag = Info[i+2] in compound;
+			if(tag && cast(T)*tag) mixin("ret." ~ Info[i+1]) = to!(typeof(mixin("ret." ~ Info[i+1])))((cast(T)*tag).value);
+		}
+	}
+	return ret;
+}
+
+Compound writeLevelInfoCompound(Info...)(LevelInfo levelInfo) if(Info.length % 3 == 0) {
+	Compound ret = new Compound();
+	foreach(i, T; Info) {
+		static if(i % 3 == 0) ret[] = new Named!T(Info[i+2], mixin("levelInfo." ~ Info[i+1]));
+	}
+	return ret;
 }
