@@ -13,7 +13,7 @@
  * 
  */
 /**
- * Copyright: 2017-2018 sel-project
+ * Copyright: Copyright © 2017-2018 SEL
  * License: LGPL-3.0
  * Authors: Kripth
  * Source: $(HTTP github.com/sel-project/sel-level/sel/level/anvil.d, sel/level/anvil.d)
