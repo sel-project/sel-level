@@ -20,6 +20,12 @@
  * SOFTWARE.
  *
  */
+/**
+ * Copyright: Copyright (c) 2017-2018 sel-project
+ * License: MIT
+ * Authors: Kripth
+ * Source: $(HTTP github.com/sel-project/sel-level/sel/level/exception.d, sel/level/exception.d)
+ */
 module sel.level.exception;
 
 import sel.level.util : Vector2;

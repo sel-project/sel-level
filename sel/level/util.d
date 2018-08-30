@@ -20,6 +20,12 @@
  * SOFTWARE.
  *
  */
+/**
+ * Copyright: Copyright (c) 2017-2018 sel-project
+ * License: MIT
+ * Authors: Kripth
+ * Source: $(HTTP github.com/sel-project/sel-level/sel/level/util.d, sel/level/util.d)
+ */
 module sel.level.util;
 
 struct Vector2(T) { 

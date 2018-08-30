@@ -24,7 +24,7 @@
  * Copyright: Copyright (c) 2017-2018 sel-project
  * License: MIT
  * Authors: Kripth
- * Source: $(HTTP github.com/sel-project/sel-level/sel/level/anvil.d, sel/level/anvil.d)
+ * Source: $(HTTP github.com/sel-project/sel-level/sel/level/format/anvil.d, sel/level/format/anvil.d)
  */
 module sel.level.format.anvil;
 
