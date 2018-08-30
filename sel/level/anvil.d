@@ -39,9 +39,9 @@ private alias LevelInfoValues = TypeTuple!(
 	Byte, "hardcore", "hardcore",
 	Long, "time", "Time",
 	Long, "dayTime", "DayTime",
-	Int, "spawnX", "SpawnX",
-	Int, "spawnY", "SpawnY",
-	Int, "spawnZ", "SpawnZ",
+	Int, "spawn.x", "SpawnX",
+	Int, "spawn.y", "SpawnY",
+	Int, "spawn.z", "SpawnZ",
 	Byte, "raining", "raining",
 	Int, "rainTime", "rainTime",
 	Byte, "thundering", "thundering",
@@ -51,11 +51,11 @@ private alias LevelInfoValues = TypeTuple!(
 
 abstract class AbstractAnvil : Level {
 
-	private JavaLevelFormat info_reader;
+	private JavaLevelFormat infoReader;
 
 	public this(string path) {
 		super(path);
-		this.info_reader = new JavaLevelFormat(this.path ~ "level.dat");
+		this.infoReader = new JavaLevelFormat(this.path ~ "level.dat");
 	}
 
 	/**
@@ -66,7 +66,7 @@ abstract class AbstractAnvil : Level {
 	 * Returns: the informations in level.dat, if found
 	 */
 	protected override LevelInfo readLevelInfo() {
-		auto compound = this.info_reader.load();
+		auto compound = this.infoReader.load();
 		if(compound is null || !compound.has!Compound("Data")) return LevelInfo.init; //TODO throw exception
 		LevelInfo ret = readLevelInfoCompound!LevelInfoValues(cast(Compound)compound["Data"]);
 		foreach(gamerule ; compound.getValue!Compound("GameRules", [])) {
@@ -89,12 +89,12 @@ abstract class AbstractAnvil : Level {
 		if(levelInfo.gamerules.length) {
 			auto compound = new Named!Compound("GameRules");
 			foreach(name, gamerule; levelInfo.gamerules) {
-				compound[] = new Named!String(name, gamerule.is_boolean ? to!string(gamerule.bool_) : to!string(gamerule.int_));
+				compound[] = new Named!String(name, gamerule.isBool ? to!string(gamerule.bool_) : to!string(gamerule.int_));
 			}
 			data[] = compound;
 		}
-		this.info_reader.tag = new Compound(data.rename("Data"));
-		this.info_reader.save();
+		this.infoReader.tag = new Compound(data.rename("Data"));
+		this.infoReader.save();
 	}
 
 }
@@ -117,15 +117,15 @@ unittest {
 
 	with(anvil.levelInfo) {
 		assert(name == "New World");
-		assert(seed == 670593098951997977L);
-		assert(gamemode == 0);
+		assert(seed == 608293555344486561L);
+		assert(gamemode == 1);
 		assert(hardcore == false);
-		assert(time == 75727);
-		assert(dayTime == 85211);
-		assert(spawnX == -252);
-		assert(spawnY == 64);
-		assert(spawnZ == 252);
-		assert(commandsAllowed == false);
+		assert(time == 15388);
+		assert(dayTime == 15388);
+		assert(spawn.x == 8);
+		assert(spawn.y == 64);
+		assert(spawn.z == 224);
+		assert(commandsAllowed == true);
 	}
 
 }

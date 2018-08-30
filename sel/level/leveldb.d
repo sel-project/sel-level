@@ -36,9 +36,9 @@ private alias LevelInfoValues = TypeTuple!(
 	Int, "gamemode", "GameType",
 	Int, "difficulty", "Difficulty",
 	Long, "time", "Time",
-	Int, "spawnX", "SpawnX",
-	Int, "spawnY", "SpawnY",
-	Int, "spawnZ", "SpawnZ",
+	Int, "spawn.x", "SpawnX",
+	Int, "spawn.y", "SpawnY",
+	Int, "spawn.z", "SpawnZ",
 	Byte, "raining", "rainLevel",
 	Int, "rainTime", "rainTime",
 	Byte, "thundering", "thunderLevel",
@@ -48,15 +48,15 @@ private alias LevelInfoValues = TypeTuple!(
 
 class LevelDB : Level {
 
-	private PocketLevelFormat info_reader;
+	private PocketLevelFormat infoReader;
 
 	public this(string path) {
 		super(path);
-		this.info_reader = new PocketLevelFormat(this.path ~ "level.dat");
+		this.infoReader = new PocketLevelFormat(this.path ~ "level.dat");
 	}
 
 	protected override LevelInfo readLevelInfo() {
-		auto compound = this.info_reader.load();
+		auto compound = this.infoReader.load();
 		if(compound !is null) return readLevelInfoCompound!LevelInfoValues(compound);
 		else return LevelInfo.init;
 	}
@@ -75,9 +75,9 @@ unittest {
 		assert(name == "My World");
 		assert(seed == 2245251969L);
 		assert(gamemode == 0);
-		assert(spawnX == 8);
-		assert(spawnY == 32767);
-		assert(spawnZ == 32);
+		assert(spawn.x == 8);
+		assert(spawn.y == 32767);
+		assert(spawn.z == 32);
 	}
 
 }

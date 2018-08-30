@@ -33,7 +33,7 @@ struct LevelInfo {
 	ulong time;
 	ulong dayTime;
 
-	int spawnX, spawnY, spawnZ;
+	Position!int spawn;
 
 	bool raining;
 	uint rainTime;
@@ -44,9 +44,15 @@ struct LevelInfo {
 
 	GameRule[string] gamerules;
 
+	static struct Position(T) {
+
+		T x, y, z;
+
+	}
+
 	static struct GameRule {
 
-		bool is_boolean;
+		bool isBool;
 
 		union {
 			bool bool_;
@@ -54,12 +60,12 @@ struct LevelInfo {
 		}
 
 		this(bool bool_) {
-			this.is_boolean = true;
+			this.isBool = true;
 			this.bool_ = bool_;
 		}
 
 		this(int int_) {
-			this.is_boolean = false;
+			this.isBool = false;
 			this.int_ = int_;
 		}
 

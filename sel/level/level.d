@@ -31,26 +31,26 @@ abstract class Level {
 
 	public immutable string path;
 
-	private bool _level_info_init = false;
-	private LevelInfo _level_info;
+	private bool levelInfoLoaded = false;
+	private LevelInfo _levelInfo;
 
 	public this(string path) {
 		this.path = buildNormalizedPath(path) ~ dirSeparator;
 	}
 
 	public final @property ref LevelInfo levelInfo() {
-		if(!this._level_info_init) this.reloadLevelInfo();
-		return this._level_info;
+		if(!this.levelInfoLoaded) this.reloadLevelInfo();
+		return this._levelInfo;
 	}
 
 	public final @property ref LevelInfo levelInfo(LevelInfo levelInfo) {
-		this._level_info_init = true;
-		return this._level_info = _level_info;
+		this.levelInfoLoaded = true;
+		return this._levelInfo = _levelInfo;
 	}
 
 	public final void reloadLevelInfo() {
-		this._level_info_init = true;
-		this._level_info = this.readLevelInfo();
+		this.levelInfoLoaded = true;
+		this._levelInfo = this.readLevelInfo();
 	}
 
 	protected abstract LevelInfo readLevelInfo();
