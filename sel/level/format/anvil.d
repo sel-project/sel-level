@@ -43,8 +43,8 @@ import sel.level.exception;
 import sel.level.level;
 import sel.level.util;
 
-import sel.nbt;
 import sel.nbt.file : JavaLevelFormat;
+import sel.nbt;
 
 import xbuffer : Buffer;
 
