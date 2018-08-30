@@ -20,16 +20,45 @@
  * SOFTWARE.
  *
  */
-/**
- * Copyright: Copyright © 2017-2018 SEL
- * License: LGPL-3.0
- * Authors: Kripth
- * Source: $(HTTP github.com/sel-project/sel-level/sel/level/package.d, sel/level/package.d)
- */
-module sel.level;
+module sel.level.exception;
 
-public import sel.level.data : LevelInfo, Chunk;
-public import sel.level.exception : LevelException, LevelInfoException, ChunkException;
-public import sel.level.format.anvil : AnvilImpl, Anvil;
-public import sel.level.format.leveldb : LevelDB;
-public import sel.level.level : Level;
+class LevelException : Exception {
+	
+	public immutable uint code;
+	
+	this(uint code, string msg, string file=__FILE__, size_t line=__LINE__) {
+		super(msg, file, line);
+		this.code = code;
+	}
+	
+}
+
+class LevelInfoException : LevelException {
+	
+	enum : uint {
+		
+		BADLY_COMPRESSED = 1,
+		WRONG_FORMAT = 2,
+		WRONG_VALUE = 3,
+		
+	}
+	
+	this(uint code, string msg, string file=__FILE__, size_t line=__LINE__) {
+		super(code, msg, file, line);
+	}
+	
+}
+
+class ChunkException : LevelException {
+	
+	enum : uint {
+		
+		INSUFFICIENT_DATA = 10,
+		
+	}
+	
+	this(uint code, string msg, string file=__FILE__, size_t line=__LINE__) {
+		super(code, msg, file, line);
+	}
+	
+}

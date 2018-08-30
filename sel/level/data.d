@@ -1,16 +1,24 @@
 ﻿/*
- * Copyright (c) 2017-2018 SEL
- * 
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU Lesser General Public License for more details.
- * 
+ * Copyright (c) 2017-2018 sel-project
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
  */
 /**
  * Copyright: Copyright © 2017-2018 SEL
@@ -20,20 +28,50 @@
  */
 module sel.level.data;
 
+import sel.level.util;
+
+import sel.nbt : Compound;
+
+/**
+ * Informations about a level (world) usually found in level.dat
+ * in NBT format.
+ */
 struct LevelInfo {
 
+	/**
+	 * Name of the world.
+	 */
 	string name;
 
+	/**
+	 * Seed of the world.
+	 */
 	long seed;
 
+	/**
+	 * Gamemode currently used in the world.
+	 * 0 for survival, 1 for creative, 2 for adventure and
+	 * 3 for spectator.
+	 */
 	ubyte gamemode;
+
+	/**
+	 * Current difficulty of the world.
+	 * 0 for peacefully, 1 for easy, 2 for normal and
+	 * 3 for hard.
+	 */
 	ubyte difficulty;
+
+	/**
+	 * Indicates whether the world is deleted when the
+	 * player dies.
+	 */
 	bool hardcore;
 
 	ulong time;
 	ulong dayTime;
 
-	Position!int spawn;
+	Vector3!int spawn;
 
 	bool raining;
 	uint rainTime;
@@ -43,12 +81,6 @@ struct LevelInfo {
 	bool commandsAllowed;
 
 	GameRule[string] gamerules;
-
-	static struct Position(T) {
-
-		T x, y, z;
-
-	}
 
 	static struct GameRule {
 
@@ -68,6 +100,40 @@ struct LevelInfo {
 			this.isBool = false;
 			this.int_ = int_;
 		}
+
+	}
+
+}
+
+enum Dimension : Data!byte {
+
+	overworld = Data!byte(0, 0),
+	nether = Data!byte(1, -1),
+	end = Data!byte(2, 1),
+
+}
+
+class Chunk {
+
+	Vector2!int position;
+	immutable uint timestamp;
+
+	Compound compound;
+
+	int[256] biomes;
+
+	Section[uint] sections;
+
+	this(Vector2!int position, uint timestamp, Compound compound) {
+		this.position = position;
+		this.timestamp = timestamp;
+		this.compound = compound;
+	}
+
+	static struct Section {
+
+		byte[4096] blockLight, skyLight;
+		string[4096] blocks;
 
 	}
 

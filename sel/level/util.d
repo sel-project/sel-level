@@ -20,16 +20,26 @@
  * SOFTWARE.
  *
  */
-/**
- * Copyright: Copyright © 2017-2018 SEL
- * License: LGPL-3.0
- * Authors: Kripth
- * Source: $(HTTP github.com/sel-project/sel-level/sel/level/package.d, sel/level/package.d)
- */
-module sel.level;
+module sel.level.util;
 
-public import sel.level.data : LevelInfo, Chunk;
-public import sel.level.exception : LevelException, LevelInfoException, ChunkException;
-public import sel.level.format.anvil : AnvilImpl, Anvil;
-public import sel.level.format.leveldb : LevelDB;
-public import sel.level.level : Level;
+struct Vector2(T) { 
+
+	T x, z;
+
+}
+
+struct Vector3(T) {
+
+	T x, y, z;
+
+}
+
+struct Data(T) {
+
+	T bedrock, java;
+
+}
+
+void enforce(T:Exception)(bool condition, uint code, string msg, string file=__FILE__, size_t line=__LINE__) {
+	if(condition) throw new T(code, msg, file, line);
+}
