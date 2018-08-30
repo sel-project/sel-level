@@ -118,16 +118,13 @@ class Chunk {
 	Vector2!int position;
 	immutable uint timestamp;
 
-	Compound compound;
-
 	int[256] biomes;
 
 	Section[uint] sections;
 
-	this(Vector2!int position, uint timestamp, Compound compound) {
+	this(Vector2!int position, uint timestamp) {
 		this.position = position;
 		this.timestamp = timestamp;
-		this.compound = compound;
 	}
 
 	static struct Section {

@@ -28,17 +28,19 @@
  */
 module sel.level.format.anvil;
 
+import std.algorithm : sort;
 import std.bitmanip : peek;
 import std.conv : to, ConvException;
-import std.file : exists, read, write;
+import std.file : exists, isFile, read, write, dirEntries, SpanMode, FileException;
 import std.path : dirSeparator;
+import std.string : endsWith, split;
 import std.system : Endian;
 import std.typetuple : TypeTuple;
 import std.zlib : Compress, UnCompress, HeaderFormat, ZlibException;
 
 import sel.level.data;
 import sel.level.exception;
-import sel.level.level : Level, readLevelInfoCompound, writeLevelInfoCompound;
+import sel.level.level;
 import sel.level.util;
 
 import sel.nbt;
@@ -70,7 +72,6 @@ abstract class AbstractAnvil : Level {
 
 	private JavaLevelFormat infoReader;
 
-	private Chunk[Vector2!int] chunks;
 	private ubyte[][Vector2!int] regions;
 
 	public this(string path) {
@@ -82,11 +83,13 @@ abstract class AbstractAnvil : Level {
 		Compound compound;
 		try {
 			compound = this.infoReader.load();
+		} catch(FileException) {
+			throw new LevelInfoException(LevelInfoException.NOT_FOUND, "Level info was not found");
 		} catch(ZlibException) {
 			throw new LevelInfoException(LevelInfoException.BADLY_COMPRESSED, "Level info was badly compressed");
 		}
-		enforce!LevelInfoException(compound !is null, LevelInfoException.WRONG_FORMAT, "Root tag is not a compound");
-		enforce!LevelInfoException(compound.has!Compound("Data"), LevelInfoException.WRONG_FORMAT, "Compound has no data tag");
+		enforceLevelInfoException(compound !is null, LevelInfoException.WRONG_FORMAT, "Root tag is not a compound");
+		enforceLevelInfoException(compound.has!Compound("Data"), LevelInfoException.WRONG_FORMAT, "Compound has no data tag");
 		LevelInfo ret = readLevelInfoCompound!LevelInfoValues(cast(Compound)compound["Data"]);
 		foreach(gamerule ; compound.getValue!Compound("GameRules", [])) {
 			if(cast(String)gamerule) {
@@ -127,6 +130,9 @@ abstract class AbstractAnvil : Level {
 		immutable file = this.path ~ dimensionPath(dimension) ~ dirSeparator ~ "r." ~ regionPosition.x.to!string ~ "." ~ regionPosition.z.to!string ~ ".mca";
 		if(exists(file)) {
 			// region exists
+			void enforce(bool condition, uint code, string msg, string file=__FILE__, size_t line=__LINE__) {
+				enforceChunkException(condition, position, code, msg, file, line);
+			}
 			ubyte[] data = cast(ubyte[])read(file);
 			if(data.length > 8192) {
 				// region may be valid
@@ -138,36 +144,39 @@ abstract class AbstractAnvil : Level {
 					immutable offset = (info >> 8) * 4096;
 					Buffer buffer = new Buffer(data[offset..offset+(info & 255)*4096]);
 					immutable length = buffer.read!(Endian.bigEndian, uint)();
-					assert(buffer.read!ubyte() == 2); // compression type
+					enforce(buffer.read!ubyte() == 2, ChunkException.UNKNOWN_COMPRESSION_METHOD, "Chunk has an unknown compression method");
 					UnCompress uncompress = new UnCompress();
 					const(void)[] ucd = uncompress.uncompress(buffer.readData(length-1));
 					ucd ~= uncompress.flush();
 					buffer.data = ucd;
 					Compound compound = cast(Compound)new ClassicStream!(Endian.bigEndian)(buffer).readTag();
 					if(compound !is null) {
-						Chunk chunk = new Chunk(position, timestamp, compound);
+						Chunk chunk = new Chunk(position, timestamp);
 						Compound level = compound.get!Compound("Level", null);
 						if(level !is null) {
-							if(level.has!IntArray("Biomes")) chunk.biomes = cast(IntArray)level["Biomes"];
+							if(level.has!IntArray("Biomes")) {
+								int[] biomes = cast(IntArray)level["Biomes"];
+								if(biomes.length == 256) chunk.biomes = biomes;
+							}
 							if(level.has!List("Sections")) {
 								foreach(sectionList ; cast(List)level["Sections"]) {
 									Compound sectionCompound = cast(Compound)sectionList;
-									assert(sectionCompound.has!List("Palette"));
-									assert(sectionCompound.has!LongArray("BlockStates"));
 									string[] palette;
-									foreach(paletteValue ; cast(List)sectionCompound["Palette"]) {
+									if(sectionCompound.has!List("Palette")) {
+										foreach(paletteValue ; cast(List)sectionCompound["Palette"]) {
 
+										}
 									}
 									if(sectionCompound.has!LongArray("BlockStates")) {
 										buffer.data = [];
 										foreach(value ; cast(LongArray)sectionCompound["BlockStates"]) {
 											buffer.write!(Endian.bigEndian)(value);
 										}
-										writeln(buffer.data);
 									}
 								}
 							}
 						}
+						this.chunks[position] = chunk;
 						return chunk;
 					}
 				}
@@ -176,10 +185,32 @@ abstract class AbstractAnvil : Level {
 		return null;
 	}
 
-	protected override Chunk[Vector2!int] readChunksImpl(Dimension dimension) {
-		//TODO read chunks
-		this.regions.clear();
-		return this.chunks;
+	protected override ReadChunksResult readChunksImpl(Dimension dimension) {
+		ReadChunksResult ret;
+		immutable path = this.path ~ dimensionPath(dimension) ~ dirSeparator;
+		foreach(string file ; dirEntries(path, SpanMode.shallow)) {
+			if(file.isFile && file.endsWith(".mca")) {
+				string[] splitted = file[path.length..$-4].split(".");
+				if(splitted.length == 3 && splitted[0] == "r") {
+					try {
+						int x = to!int(splitted[1]) << 5;
+						int z = to!int(splitted[2]) << 5;
+						foreach(i ; x..x+32) {
+							foreach(j ; z..z+32) {
+								Vector2!int position = Vector2!int(i, j);
+								try {
+									ret.chunks[position] = this.readChunk(dimension, position);
+								} catch(ChunkException e) {
+									ret.exceptions ~= e;
+								}
+							}
+						}
+						this.regions.remove(Vector2!int(x, z));
+					} catch(ConvException) {}
+				}
+			}
+		}
+		return ret;
 	}
 
 	private static string dimensionPath(Dimension dimension) {
@@ -189,8 +220,8 @@ abstract class AbstractAnvil : Level {
 
 }
 
-class AnvilImpl(string order) : AbstractAnvil { //TODO validate coordinates
-	
+class AnvilImpl(string order) : AbstractAnvil if(order.split("").sort.release == ["x", "y", "z"]) {
+
 	public this(string path) {
 		super(path);
 	}
@@ -215,6 +246,8 @@ unittest {
 		assert(spawn.z == 224);
 		assert(commandsAllowed == true);
 	}
+
+	anvil.readChunks();
 
 	Chunk chunk = anvil.readChunk(0, 0);
 

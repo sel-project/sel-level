@@ -39,7 +39,3 @@ struct Data(T) {
 	T bedrock, java;
 
 }
-
-void enforce(T:Exception)(bool condition, uint code, string msg, string file=__FILE__, size_t line=__LINE__) {
-	if(condition) throw new T(code, msg, file, line);
-}

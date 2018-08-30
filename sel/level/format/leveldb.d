@@ -28,10 +28,12 @@
  */
 module sel.level.format.leveldb;
 
+import std.file : FileException;
 import std.typetuple : TypeTuple;
 
 import sel.level.data;
-import sel.level.level : Level, readLevelInfoCompound, writeLevelInfoCompound;
+import sel.level.exception;
+import sel.level.level;
 import sel.level.util;
 
 import sel.nbt.file : PocketLevelFormat;
@@ -65,9 +67,14 @@ class LevelDB : Level {
 	}
 
 	protected override LevelInfo readLevelInfo() {
-		auto compound = this.infoReader.load();
-		if(compound !is null) return readLevelInfoCompound!LevelInfoValues(compound);
-		else return LevelInfo.init;
+		Compound compound;
+		try {
+			compound = this.infoReader.load();
+		} catch(FileException) {
+			throw new LevelInfoException(LevelInfoException.NOT_FOUND, "Level info was not found");
+		}
+		enforceLevelInfoException(compound !is null, LevelInfoException.WRONG_FORMAT, "Root tag is not a compound");
+		return readLevelInfoCompound!LevelInfoValues(compound);
 	}
 
 	protected override void writeLevelInfo(LevelInfo levelInfo) {
@@ -78,8 +85,8 @@ class LevelDB : Level {
 		return null;
 	}
 
-	protected override Chunk[Vector2!int] readChunksImpl(Dimension dimension) {
-		return null;
+	protected override ReadChunksResult readChunksImpl(Dimension dimension) {
+		return ReadChunksResult.init;
 	}
 
 }

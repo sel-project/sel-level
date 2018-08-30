@@ -32,7 +32,7 @@ import std.conv : to, ConvException;
 import std.path : buildNormalizedPath, dirSeparator;
 
 import sel.level.data;
-import sel.level.exception : LevelInfoException;
+import sel.level.exception : LevelInfoException, ChunkException;
 import sel.level.util;
 
 import sel.nbt.tags : Named, Compound;
@@ -43,6 +43,8 @@ abstract class Level {
 
 	private bool levelInfoLoaded = false;
 	private LevelInfo _levelInfo;
+
+	public Chunk[Vector2!int] chunks;
 
 	public this(string path) {
 		this.path = buildNormalizedPath(path) ~ dirSeparator;
@@ -72,6 +74,7 @@ abstract class Level {
 
 	/**
 	 * Reads the chunk at the given coordinates.
+	 * Throws: ChunkException
 	 */
 	public final Chunk readChunk(Dimension dimension, Vector2!int position) {
 		return this.readChunkImpl(dimension, position);
@@ -96,12 +99,20 @@ abstract class Level {
 
 	/**
 	 * Reads all chunks in the level.
+	 * Throws: ChunkException
 	 */
-	public final Chunk[Vector2!int] readChunks(Dimension dimension=Dimension.overworld) {
+	public final ReadChunksResult readChunks(Dimension dimension=Dimension.overworld) {
 		return this.readChunksImpl(dimension);
 	}
 
-	protected abstract Chunk[Vector2!int] readChunksImpl(Dimension);
+	protected abstract ReadChunksResult readChunksImpl(Dimension);
+
+}
+
+struct ReadChunksResult {
+
+	Chunk[Vector2!int] chunks;
+	ChunkException[] exceptions;
 
 }
 
