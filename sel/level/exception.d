@@ -28,7 +28,7 @@
  */
 module sel.level.exception;
 
-import sel.level.util : Vector2;
+import sel.math : Vector2;
 
 class LevelException : Exception {
 	
@@ -45,7 +45,7 @@ class LevelInfoException : LevelException {
 	
 	enum : uint {
 
-		NOT_FOUND = 0,
+		NOT_FOUND = 1,
 		BADLY_COMPRESSED,
 		WRONG_FORMAT,
 		WRONG_VALUE,
@@ -62,8 +62,9 @@ class ChunkException : LevelException {
 	
 	enum : uint {
 		
-		INSUFFICIENT_DATA = 100,
+		INSUFFICIENT_DATA = 1,
 		UNKNOWN_COMPRESSION_METHOD,
+		WRONG_FORMAT,
 		
 	}
 
@@ -76,10 +77,10 @@ class ChunkException : LevelException {
 	
 }
 
-void enforceLevelInfoException(bool condition, uint code, string msg, string file=__FILE__, size_t line=__LINE__) {
+void enforceLevelInfoException(bool condition, uint code, lazy string msg, string file=__FILE__, size_t line=__LINE__) {
 	if(!condition) throw new LevelInfoException(code, msg, file, line);
 }
 
-void enforceChunkException(bool condition, lazy Vector2!int position, uint code, string msg, string file=__FILE__, size_t line=__LINE__) {
+void enforceChunkException(bool condition, Vector2!int position, uint code, lazy string msg, string file=__FILE__, size_t line=__LINE__) {
 	if(!condition) throw new ChunkException(position, code, msg, file, line);
 }

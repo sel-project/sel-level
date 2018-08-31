@@ -28,13 +28,16 @@
  */
 module sel.level.format.leveldb;
 
-import std.file : FileException;
+import std.file : exists, isFile, read, write, dirEntries, SpanMode, FileException;
+import std.string : endsWith;
 import std.typetuple : TypeTuple;
+import std.zlib : Compress, UnCompress;
 
 import sel.level.data;
 import sel.level.exception;
 import sel.level.level;
-import sel.level.util;
+
+import sel.math : Vector2;
 
 import sel.nbt.file : PocketLevelFormat;
 import sel.nbt.tags;
@@ -86,6 +89,15 @@ class LevelDB : Level {
 	}
 
 	protected override ReadChunksResult readChunksImpl(Dimension dimension) {
+		// uncompress and copy to uc
+		/*foreach(string file ; dirEntries(this.path ~ "db", SpanMode.shallow)) {
+			if(file.isFile && file.endsWith(".ldb")) {
+				UnCompress uncompress = new UnCompress();
+				const(void)[] data = uncompress.uncompress(read(file));
+				data ~= uncompress.flush();
+				write(this.path ~ "uncompressed_db" ~ file[this.path.length+2..$], data);
+			}
+		}*/
 		return ReadChunksResult.init;
 	}
 
@@ -97,11 +109,14 @@ unittest {
 
 	with(level.levelInfo) {
 		assert(name == "My World");
-		assert(seed == 2245251969L);
-		assert(gamemode == 0);
-		assert(spawn.x == 8);
+		assert(seed == 2354673524L);
+		assert(gamemode == 1);
+		assert(difficulty == 2);
+		assert(spawn.x == 152);
 		assert(spawn.y == 32767);
-		assert(spawn.z == 32);
+		assert(spawn.z == 4);
 	}
+
+	level.readChunks();
 
 }

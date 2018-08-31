@@ -35,6 +35,8 @@ import sel.level.data;
 import sel.level.exception : LevelInfoException, ChunkException;
 import sel.level.util;
 
+import sel.math : Vector2;
+
 import sel.nbt.tags : Named, Compound;
 
 abstract class Level {

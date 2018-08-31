@@ -41,10 +41,12 @@ import std.zlib : Compress, UnCompress, HeaderFormat, ZlibException;
 import sel.level.data;
 import sel.level.exception;
 import sel.level.level;
-import sel.level.util;
+
+import sel.math : Vector2;
 
 import sel.nbt.file : JavaLevelFormat;
-import sel.nbt;
+import sel.nbt.stream : Stream, ClassicStream;
+import sel.nbt.tags;
 
 import xbuffer : Buffer;
 
@@ -126,63 +128,80 @@ abstract class AbstractAnvil : Level {
 	protected override Chunk readChunkImpl(Dimension dimension, Vector2!int position) {
 		auto savedChunk = position in chunks;
 		if(savedChunk) return *savedChunk;
-		Vector2!int regionPosition = Vector2!int(position.x >> 5, position.z >> 5);
+		Vector2!int regionPosition = position >> 5;
 		immutable file = this.path ~ dimensionPath(dimension) ~ dirSeparator ~ "r." ~ regionPosition.x.to!string ~ "." ~ regionPosition.z.to!string ~ ".mca";
 		if(exists(file)) {
 			// region exists
-			void enforce(bool condition, uint code, string msg, string file=__FILE__, size_t line=__LINE__) {
+			void enforce(bool condition, uint code, lazy string msg, string file=__FILE__, size_t line=__LINE__) {
 				enforceChunkException(condition, position, code, msg, file, line);
 			}
-			ubyte[] data = cast(ubyte[])read(file);
-			if(data.length > 8192) {
-				// region may be valid
-				immutable infoOffset = ((position.x & 31) + (position.z & 31) * 32) * 4;
-				immutable info = peek!uint(data, infoOffset);
-				immutable timestamp = peek!uint(data, infoOffset + 4096);
-				if(info != 0) {
-					// chunk exists
-					immutable offset = (info >> 8) * 4096;
-					Buffer buffer = new Buffer(data[offset..offset+(info & 255)*4096]);
-					immutable length = buffer.read!(Endian.bigEndian, uint)();
-					enforce(buffer.read!ubyte() == 2, ChunkException.UNKNOWN_COMPRESSION_METHOD, "Chunk has an unknown compression method");
-					UnCompress uncompress = new UnCompress();
-					const(void)[] ucd = uncompress.uncompress(buffer.readData(length-1));
-					ucd ~= uncompress.flush();
-					buffer.data = ucd;
-					Compound compound = cast(Compound)new ClassicStream!(Endian.bigEndian)(buffer).readTag();
-					if(compound !is null) {
-						Chunk chunk = new Chunk(position, timestamp);
-						Compound level = compound.get!Compound("Level", null);
-						if(level !is null) {
-							if(level.has!IntArray("Biomes")) {
-								int[] biomes = cast(IntArray)level["Biomes"];
-								if(biomes.length == 256) chunk.biomes = biomes;
-							}
-							if(level.has!List("Sections")) {
-								foreach(sectionList ; cast(List)level["Sections"]) {
-									Compound sectionCompound = cast(Compound)sectionList;
-									string[] palette;
-									if(sectionCompound.has!List("Palette")) {
-										foreach(paletteValue ; cast(List)sectionCompound["Palette"]) {
-
-										}
-									}
-									if(sectionCompound.has!LongArray("BlockStates")) {
-										buffer.data = [];
-										foreach(value ; cast(LongArray)sectionCompound["BlockStates"]) {
-											buffer.write!(Endian.bigEndian)(value);
-										}
-									}
+			auto cached = regionPosition in this.regions;
+			ubyte[] data = cached ? *cached : cast(ubyte[])read(file);
+			enforce(data.length > 8192, ChunkException.WRONG_FORMAT, "Data is too short");
+			// region may be valid
+			immutable infoOffset = ((position.x & 31) + (position.z & 31) * 32) * 4;
+			immutable info = peek!uint(data, infoOffset);
+			immutable timestamp = peek!uint(data, infoOffset + 4096);
+			if(info == 0) return null;
+			// chunk exists
+			immutable offset = (info >> 8) * 4096;
+			Buffer buffer = new Buffer(data[offset..offset+(info & 255)*4096]); //TODO validate and avoid range errors
+			immutable length = buffer.read!(Endian.bigEndian, uint)();
+			enforce(buffer.read!ubyte() == 2, ChunkException.UNKNOWN_COMPRESSION_METHOD, "Chunk has an unknown compression method");
+			UnCompress uncompress = new UnCompress();
+			const(void)[] ucd = uncompress.uncompress(buffer.readData(length-1));
+			ucd ~= uncompress.flush();
+			buffer.data = ucd;
+			Compound compound = cast(Compound)new ClassicStream!(Endian.bigEndian)(buffer).readTag();
+			enforce(compound !is null, ChunkException.WRONG_FORMAT, "Root tag is not a compound");
+			Chunk chunk = new Chunk(position, timestamp);
+			Compound level = compound.get!Compound("Level", null);
+			enforce(level !is null, ChunkException.WRONG_FORMAT, "Level tag does not exist or is not a compound");
+			if(level.has!IntArray("Biomes")) {
+				// read biomes
+				int[] biomes = cast(IntArray)level["Biomes"];
+				if(biomes.length == 256) chunk.biomes = biomes;
+			}
+			if(level.has!List("Sections")) {
+				// read sections
+				List sections = cast(List)level["Sections"];
+				enforce(sections.childType == NBT_TYPE.COMPOUND, ChunkException.WRONG_FORMAT, "Sections are not of type compound");
+				foreach(sectionList ; sections) {
+					Compound sectionCompound = cast(Compound)sectionList;
+					enforce(sectionCompound.has!Byte("Y"), ChunkException.WRONG_FORMAT, "The Y coordinate tag is missing or has a wrong format");
+					immutable byte y = cast(Byte)sectionCompound["Y"];
+					enforce(y >= 0 && y <= 15, ChunkException.WRONG_FORMAT, "The Y coordinate is not is a valid range (" ~ y.to!string ~ ")");
+					enforce(y !in chunk.sections, ChunkException.WRONG_FORMAT, "Duplicate section");
+					Chunk.Block[] palette;
+					if(sectionCompound.has!List("Palette")) {
+						List paletteList = cast(List)sectionCompound["Palette"];
+						enforce(paletteList.childType == NBT_TYPE.COMPOUND, ChunkException.WRONG_FORMAT, "Palette's children are not of type compound");
+						foreach(paletteValue ; cast(List)sectionCompound["Palette"]) {
+							Compound paletteCompound = cast(Compound)paletteValue;
+							enforce(paletteCompound.has!String("Name"), ChunkException.WRONG_FORMAT, "Palette value has no name");
+							Chunk.Block block = Chunk.Block(cast(String)paletteCompound["Name"]);
+							if(paletteCompound.has!Compound("Properties")) {
+								foreach(v ; (cast(Compound)paletteCompound["Properties"])[]) {
+									String value = cast(String)v;
+									if(value !is null) block.properties[value.name] = value;
 								}
 							}
+							palette ~= block;
 						}
-						this.chunks[position] = chunk;
-						return chunk;
+						if(sectionCompound.has!LongArray("BlockStates")) {
+							buffer.data = [];
+							foreach(value ; cast(LongArray)sectionCompound["BlockStates"]) {
+								buffer.write!(Endian.bigEndian)(value);
+							}
+						}
 					}
 				}
 			}
+			this.chunks[position] = chunk;
+			return chunk;
+		} else {
+			return null;
 		}
-		return null;
 	}
 
 	protected override ReadChunksResult readChunksImpl(Dimension dimension) {
@@ -193,11 +212,10 @@ abstract class AbstractAnvil : Level {
 				string[] splitted = file[path.length..$-4].split(".");
 				if(splitted.length == 3 && splitted[0] == "r") {
 					try {
-						int x = to!int(splitted[1]) << 5;
-						int z = to!int(splitted[2]) << 5;
-						foreach(i ; x..x+32) {
-							foreach(j ; z..z+32) {
-								Vector2!int position = Vector2!int(i, j);
+						Vector2!int region = Vector2!int(to!int(splitted[1]) << 5, to!int(splitted[2]) << 5);
+						foreach(x ; region.x..region.x+32) {
+							foreach(z ; region.z..region.z+32) {
+								Vector2!int position = Vector2!int(x, z);
 								try {
 									ret.chunks[position] = this.readChunk(dimension, position);
 								} catch(ChunkException e) {
@@ -205,7 +223,7 @@ abstract class AbstractAnvil : Level {
 								}
 							}
 						}
-						this.regions.remove(Vector2!int(x, z));
+						this.regions.remove(region);
 					} catch(ConvException) {}
 				}
 			}
@@ -246,8 +264,6 @@ unittest {
 		assert(spawn.z == 224);
 		assert(commandsAllowed == true);
 	}
-
-	anvil.readChunks();
 
 	Chunk chunk = anvil.readChunk(0, 0);
 

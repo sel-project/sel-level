@@ -30,6 +30,8 @@ module sel.level.data;
 
 import sel.level.util;
 
+import sel.math : Vector2, Vector3;
+
 import sel.nbt : Compound;
 
 /**
@@ -130,7 +132,14 @@ class Chunk {
 	static struct Section {
 
 		byte[4096] blockLight, skyLight;
-		string[4096] blocks;
+		Block[4096] blocks;
+
+	}
+
+	static struct Block {
+
+		string name;
+		string[string] properties;
 
 	}
 

@@ -28,18 +28,6 @@
  */
 module sel.level.util;
 
-struct Vector2(T) { 
-
-	T x, z;
-
-}
-
-struct Vector3(T) {
-
-	T x, y, z;
-
-}
-
 struct Data(T) {
 
 	T bedrock, java;
