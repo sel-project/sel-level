@@ -1,7 +1,7 @@
 name "sel-level"
 description "Level reader for Minecraft worlds"
 authors "sel-project"
-copyright "Copyright (c) 2017-2018 sel-project"
+copyright "Copyright (c) 2017-2019 sel-project"
 license "MIT"
 targetType "library"
 dependency "sel-math" version="~>0.1"
